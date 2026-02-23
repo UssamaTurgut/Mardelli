@@ -133,6 +133,22 @@ app.MapPost("/api/media/upload", async (
 })
 .RequireAuthorization();
 
+app.MapGet("/api/admin/delete-vocab/{id:int}", async (int id, HttpContext ctx, DictionaryService dictionaryService) =>
+{
+    if (!ctx.User.IsInRole("Admin"))
+        return Results.Redirect("/dictionary");
+    await dictionaryService.DeleteVocabularyAsync(id);
+    return Results.Redirect("/dictionary");
+}).RequireAuthorization();
+
+app.MapGet("/api/admin/delete-media/{id:int}", async (int id, HttpContext ctx, MediaService mediaService) =>
+{
+    if (!ctx.User.IsInRole("Admin"))
+        return Results.Redirect("/materials");
+    await mediaService.DeleteMediaAsync(id);
+    return Results.Redirect("/materials");
+}).RequireAuthorization();
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .DisableAntiforgery();

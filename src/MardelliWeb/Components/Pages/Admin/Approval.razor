@@ -35,6 +35,8 @@
                         <th>@(IsGerman ? "Mardelli" : "Mardelli")</th>
                         <th>@(IsGerman ? "Latein" : "Latin")</th>
                         <th>@(IsGerman ? "Region" : "Bölge")</th>
+                        <th>@(IsGerman ? "Eingereicht von" : "Gönderen")</th>
+                        <th>@(IsGerman ? "Datum" : "Tarih")</th>
                         <th class="text-end">@(IsGerman ? "Aktion" : "İşlem")</th>
                     </tr>
                 </thead>
@@ -47,6 +49,8 @@
                             <td dir="rtl">@(e.MardelliWord ?? "—")</td>
                             <td>@(e.MardelliLatin ?? "—")</td>
                             <td>@(e.Region != null ? (IsGerman ? e.Region.NameGerman : e.Region.NameTurkish) : "—")</td>
+                            <td>@(e.ContributorEmail ?? "—")</td>
+                            <td>@e.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
                             <td class="text-end">
                                 <a href="@GetApproveVocabUrl(vocabId)" class="btn btn-sm btn-success">@(IsGerman ? "Freigeben" : "Onayla")</a>
                                 <a href="@GetRejectVocabUrl(vocabId)" class="btn btn-sm btn-outline-danger ms-1">@(IsGerman ? "Ablehnen" : "Reddet")</a>
@@ -67,19 +71,48 @@
         <h2 class="h5 mb-3">@(IsGerman ? "Ausstehende Materialien" : "Bekleyen materyaller")</h2>
     @if (_pendingMedia.Any())
     {
-        <ul class="list-group list-group-flush mb-0">
+        <div class="approval-media-list">
             @foreach (var m in _pendingMedia)
             {
                 var mediaId = m.Id;
-                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                    <span>@m.Title (@(m.Type == MediaType.Video ? "Video" : "Text")) — @(m.Region != null ? (IsGerman ? m.Region.NameGerman : m.Region.NameTurkish) : "—")</span>
-                    <span>
-                        <a href="@GetApproveMediaUrl(mediaId)" class="btn btn-sm btn-success">@(IsGerman ? "Freigeben" : "Onayla")</a>
-                        <a href="@GetRejectMediaUrl(mediaId)" class="btn btn-sm btn-outline-danger ms-1">@(IsGerman ? "Ablehnen" : "Reddet")</a>
-                    </span>
-                </li>
+                <div class="approval-media-item card-mardelli mb-3 p-3">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+                        <div>
+                            <strong>@m.Title</strong>
+                            <span class="badge bg-secondary ms-2">@(m.Type == MediaType.Video ? (IsGerman ? "Video" : "Video") : (IsGerman ? "Text" : "Metin"))</span>
+                            @if (m.Region != null) { <span class="text-muted ms-2">— @(IsGerman ? m.Region.NameGerman : m.Region.NameTurkish)</span> }
+                        </div>
+                        <span>
+                            <a href="@GetApproveMediaUrl(mediaId)" class="btn btn-sm btn-success">@(IsGerman ? "Freigeben" : "Onayla")</a>
+                            <a href="@GetRejectMediaUrl(mediaId)" class="btn btn-sm btn-outline-danger ms-1">@(IsGerman ? "Ablehnen" : "Reddet")</a>
+                        </span>
+                    </div>
+                    <div class="approval-media-meta text-muted small mb-2">
+                        @(IsGerman ? "Absender:" : "Gönderen:") <strong>@(m.UploaderEmail ?? "—")</strong>
+                        ·
+                        @(IsGerman ? "Hochgeladen:" : "Yükleme:") <strong>@m.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</strong>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(m.Description))
+                    {
+                        <p class="small mb-2">@m.Description</p>
+                    }
+                    <div class="approval-media-preview">
+                        @if (m.Type == MediaType.Video && !string.IsNullOrEmpty(m.FilePath))
+                        {
+                            <p class="small text-muted mb-1">@(IsGerman ? "Vorschau:" : "Önizleme:")</p>
+                            <video controls preload="metadata" class="approval-video-preview" src="@m.FilePath">
+                                @(IsGerman ? "Ihr Browser unterstützt die Wiedergabe nicht." : "Tarayıcınız video oynatmayı desteklemiyor.")
+                            </video>
+                        }
+                        else if (m.Type == MediaType.Text && !string.IsNullOrEmpty(m.FilePath))
+                        {
+                            <p class="small text-muted mb-1">@(IsGerman ? "Vorschau:" : "Önizleme:")</p>
+                            <a href="@m.FilePath" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">@(IsGerman ? "Textdatei öffnen" : "Metin dosyasını aç")</a>
+                        }
+                    </div>
+                </div>
             }
-        </ul>
+        </div>
     }
     else
     {

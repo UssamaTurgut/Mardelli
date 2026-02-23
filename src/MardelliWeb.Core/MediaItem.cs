@@ -23,6 +23,8 @@ public class MediaItem
     public Region? Region { get; set; }
 
     public string UploaderId { get; set; } = string.Empty;
+    /// <summary>Nur zur Anzeige (z. B. Admin-Freigabe), wird nicht in der DB gespeichert.</summary>
+    public string? UploaderEmail { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>Freigabe: nur Approved erscheint in Materialien.</summary>

@@ -35,10 +35,17 @@
                         @if (m.Region != null) { <span class="text-muted ms-2">@(IsGerman ? m.Region.NameGerman : m.Region.NameTurkish)</span> }
                         @if (!string.IsNullOrEmpty(m.Description)) { <p class="mb-0 mt-1 small text-muted">@m.Description</p> }
                     </div>
-                    @if (!string.IsNullOrEmpty(m.FilePath))
-                    {
-                        <a href="@m.FilePath" target="_blank" class="btn btn-sm btn-outline-primary">@(IsGerman ? "Öffnen" : "Aç")</a>
-                    }
+                    <div class="d-flex gap-2 align-items-center">
+                        @if (!string.IsNullOrEmpty(m.FilePath))
+                        {
+                            <a href="@m.FilePath" target="_blank" class="btn btn-sm btn-outline-primary">@(IsGerman ? "Öffnen" : "Aç")</a>
+                        }
+                        <AuthorizeView Roles="Admin">
+                            <Authorized>
+                                <a href="/api/admin/delete-media/@m.Id" class="btn btn-sm btn-outline-danger" onclick="return confirm('@(IsGerman ? "Material wirklich löschen?" : "Materyal silinsin mi?")');">@(IsGerman ? "Löschen" : "Sil")</a>
+                            </Authorized>
+                        </AuthorizeView>
+                    </div>
                 </div>
             }
         </div>

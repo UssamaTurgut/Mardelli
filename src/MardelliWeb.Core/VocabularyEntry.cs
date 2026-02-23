@@ -33,6 +33,8 @@ public class VocabularyEntry
 
     /// <summary>User-ID des Beitragenden (Identity).</summary>
     public string ContributorId { get; set; } = string.Empty;
+    /// <summary>Nur zur Anzeige (z. B. Admin-Freigabe), wird nicht in der DB gespeichert.</summary>
+    public string? ContributorEmail { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 }

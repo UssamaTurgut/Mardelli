@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MardelliWeb.Core;
 using MardelliWeb.Data;
@@ -7,8 +8,13 @@ namespace MardelliWeb;
 public class DictionaryService
 {
     private readonly AppDbContext _db;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public DictionaryService(AppDbContext db) => _db = db;
+    public DictionaryService(AppDbContext db, UserManager<ApplicationUser> userManager)
+    {
+        _db = db;
+        _userManager = userManager;
+    }
 
     public async Task<List<VocabularyEntry>> GetEntriesAsync(
         SourceLanguage? sourceLanguage,
@@ -41,17 +47,37 @@ public class DictionaryService
         return await q.Skip(skip).Take(take).ToListAsync(ct);
     }
 
-    public async Task<List<VocabularyEntry>> GetPendingVocabularyAsync(CancellationToken ct = default) =>
-        await _db.VocabularyEntries
+    public async Task<List<VocabularyEntry>> GetPendingVocabularyAsync(CancellationToken ct = default)
+    {
+        var list = await _db.VocabularyEntries
             .Include(x => x.Region)
             .Where(x => x.Status == EntryStatus.Pending)
             .OrderBy(x => x.CreatedAt)
             .ToListAsync(ct);
+        foreach (var e in list)
+        {
+            if (!string.IsNullOrEmpty(e.ContributorId))
+            {
+                var user = await _userManager.FindByIdAsync(e.ContributorId);
+                e.ContributorEmail = user?.Email ?? user?.UserName ?? e.ContributorId;
+            }
+        }
+        return list;
+    }
 
     public async Task SetVocabularyStatusAsync(int id, EntryStatus status, CancellationToken ct = default)
     {
         var e = await _db.VocabularyEntries.FindAsync(new object[] { id }, ct);
         if (e != null) { e.Status = status; e.UpdatedAt = DateTime.UtcNow; await _db.SaveChangesAsync(ct); }
+    }
+
+    public async Task<bool> DeleteVocabularyAsync(int id, CancellationToken ct = default)
+    {
+        var e = await _db.VocabularyEntries.FindAsync(new object[] { id }, ct);
+        if (e == null) return false;
+        _db.VocabularyEntries.Remove(e);
+        await _db.SaveChangesAsync(ct);
+        return true;
     }
 
     public async Task<VocabularyEntry?> GetByIdAsync(int id, CancellationToken ct = default) =>

@@ -37,8 +37,8 @@
                             }
                         </select>
                     </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="button" class="btn btn-primary w-100" @onclick="Load">@(IsGerman ? "Suchen" : "Ara")</button>
+                    <div class="col-md-2 d-flex align-items-end justify-content-center">
+                        <button type="button" class="btn btn-primary" @onclick="Load">@(IsGerman ? "Suchen" : "Ara")</button>
                     </div>
                 </div>
             </div>
@@ -63,6 +63,9 @@
                         <th>@(IsGerman ? "Mardelli (arab.)" : "Mardelli (Arapça)")</th>
                         <th>@(IsGerman ? "Mardelli (latein.)" : "Mardelli (Latin)")</th>
                         <th>@(IsGerman ? "Region" : "Bölge")</th>
+                        <AuthorizeView Roles="Admin">
+                            <Authorized><th class="text-end">@(IsGerman ? "Aktion" : "İşlem")</th></Authorized>
+                        </AuthorizeView>
                     </tr>
                 </thead>
                 <tbody>
@@ -74,6 +77,13 @@
                             <td dir="rtl" style="font-size:1.2em">@e.MardelliWord</td>
                             <td>@(e.MardelliLatin ?? e.Transliteration ?? "—")</td>
                             <td>@(IsGerman ? e.Region.NameGerman : e.Region.NameTurkish)</td>
+                            <AuthorizeView Roles="Admin">
+                                <Authorized>
+                                    <td class="text-end">
+                                        <a href="/api/admin/delete-vocab/@e.Id" class="btn btn-sm btn-outline-danger" onclick="return confirm('@(IsGerman ? "Vokabel wirklich löschen?" : "Kelime silinsin mi?")');">@(IsGerman ? "Löschen" : "Sil")</a>
+                                    </td>
+                                </Authorized>
+                            </AuthorizeView>
                         </tr>
                     }
                 </tbody>

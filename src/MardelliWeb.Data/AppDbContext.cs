@@ -22,12 +22,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => new { x.SourceLanguage, x.SourceWord });
             e.HasIndex(x => x.MardelliWord);
             e.HasIndex(x => x.Status);
+            e.Ignore(x => x.ContributorEmail);
         });
 
         builder.Entity<MediaItem>(e =>
         {
             e.HasOne(x => x.Region).WithMany().HasForeignKey(x => x.RegionId).IsRequired(false);
             e.HasIndex(x => x.Status);
+            e.Ignore(x => x.UploaderEmail);
         });
 
         builder.Entity<ApplicationUser>(e =>
