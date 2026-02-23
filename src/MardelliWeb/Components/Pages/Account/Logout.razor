@@ -1,0 +1,15 @@
+@page "/Account/Logout"
+@inject NavigationManager Nav
+@inject SignInManager<ApplicationUser> SignInManager
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Abmelden</PageTitle>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await SignInManager.SignOutAsync();
+        Nav.NavigateTo("/", forceLoad: true);
+    }
+}

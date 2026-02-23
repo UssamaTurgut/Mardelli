@@ -1,0 +1,149 @@
+@page "/Admin/Approval"
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Web
+@using MardelliWeb.Core
+@inject DictionaryService DictionaryService
+@inject MediaService MediaService
+@inject NavigationManager Nav
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+<PageTitle>@(IsGerman ? "Freigabe" : "Onay")</PageTitle>
+
+<div class="p-4 approval-page">
+    <h1>@(IsGerman ? "Freigabe (Admin)" : "Onay (Admin)")</h1>
+    <p class="text-muted mb-4">@(IsGerman ? "Eingeloggt als Admin. Vokabeln und Materialien freigeben oder ablehnen." : "Admin olarak giriş yaptınız. Kelime ve materyalleri onaylayın veya reddedin.")</p>
+
+    @if (!_pendingVocab.Any() && !_pendingMedia.Any())
+    {
+        <div class="approval-empty-state">
+            <span class="bi bi-check-circle-fill approval-empty-icon" aria-hidden="true"></span>
+            <h2 class="approval-empty-heading">@(IsGerman ? "Alles erledigt" : "Hepsi tamam")</h2>
+            <p class="approval-empty-desc">@(IsGerman ? "Es gibt derzeit keine Vokabeln oder Materialien zur Freigabe. Neue Einträge erscheinen hier, sobald Nutzer sie eingereicht haben." : "Şu anda onay bekleyen kelime veya materyal yok. Kullanıcılar gönderdiğinde burada listelenecek.")</p>
+        </div>
+    }
+
+    <div class="approval-card card-mardelli mb-4">
+        <h2 class="h5 mb-3">@(IsGerman ? "Ausstehende Vokabeln" : "Bekleyen kelimeler")</h2>
+    @if (_pendingVocab.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>@(IsGerman ? "Quellwort" : "Kaynak")</th>
+                        <th>@(IsGerman ? "Mardelli" : "Mardelli")</th>
+                        <th>@(IsGerman ? "Latein" : "Latin")</th>
+                        <th>@(IsGerman ? "Region" : "Bölge")</th>
+                        <th class="text-end">@(IsGerman ? "Aktion" : "İşlem")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in _pendingVocab)
+                    {
+                        var vocabId = e.Id;
+                        <tr>
+                            <td>@e.SourceWord</td>
+                            <td dir="rtl">@(e.MardelliWord ?? "—")</td>
+                            <td>@(e.MardelliLatin ?? "—")</td>
+                            <td>@(e.Region != null ? (IsGerman ? e.Region.NameGerman : e.Region.NameTurkish) : "—")</td>
+                            <td class="text-end">
+                                <a href="@GetApproveVocabUrl(vocabId)" class="btn btn-sm btn-success">@(IsGerman ? "Freigeben" : "Onayla")</a>
+                                <a href="@GetRejectVocabUrl(vocabId)" class="btn btn-sm btn-outline-danger ms-1">@(IsGerman ? "Ablehnen" : "Reddet")</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <p class="text-muted mb-0">@(IsGerman ? "Keine ausstehenden Vokabeln." : "Bekleyen kelime yok.")</p>
+    }
+    </div>
+
+    <div class="approval-card card-mardelli mb-4">
+        <h2 class="h5 mb-3">@(IsGerman ? "Ausstehende Materialien" : "Bekleyen materyaller")</h2>
+    @if (_pendingMedia.Any())
+    {
+        <ul class="list-group list-group-flush mb-0">
+            @foreach (var m in _pendingMedia)
+            {
+                var mediaId = m.Id;
+                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                    <span>@m.Title (@(m.Type == MediaType.Video ? "Video" : "Text")) — @(m.Region != null ? (IsGerman ? m.Region.NameGerman : m.Region.NameTurkish) : "—")</span>
+                    <span>
+                        <a href="@GetApproveMediaUrl(mediaId)" class="btn btn-sm btn-success">@(IsGerman ? "Freigeben" : "Onayla")</a>
+                        <a href="@GetRejectMediaUrl(mediaId)" class="btn btn-sm btn-outline-danger ms-1">@(IsGerman ? "Ablehnen" : "Reddet")</a>
+                    </span>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p class="text-muted mb-0">@(IsGerman ? "Keine ausstehenden Materialien." : "Bekleyen materyal yok.")</p>
+    }
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "approveVocab")]
+    public int? ApproveVocabId { get; set; }
+    [SupplyParameterFromQuery(Name = "rejectVocab")]
+    public int? RejectVocabId { get; set; }
+    [SupplyParameterFromQuery(Name = "approveMedia")]
+    public int? ApproveMediaId { get; set; }
+    [SupplyParameterFromQuery(Name = "rejectMedia")]
+    public int? RejectMediaId { get; set; }
+
+    private List<VocabularyEntry> _pendingVocab = new();
+    private List<MediaItem> _pendingMedia = new();
+    private bool IsGerman => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ApproveVocabId.HasValue)
+        {
+            await DictionaryService.SetVocabularyStatusAsync(ApproveVocabId.Value, EntryStatus.Approved);
+            Nav.NavigateTo("/Admin/Approval", replace: true);
+            return;
+        }
+        if (RejectVocabId.HasValue)
+        {
+            await DictionaryService.SetVocabularyStatusAsync(RejectVocabId.Value, EntryStatus.Rejected);
+            Nav.NavigateTo("/Admin/Approval", replace: true);
+            return;
+        }
+        if (ApproveMediaId.HasValue)
+        {
+            await MediaService.SetMediaStatusAsync(ApproveMediaId.Value, EntryStatus.Approved);
+            Nav.NavigateTo("/Admin/Approval", replace: true);
+            return;
+        }
+        if (RejectMediaId.HasValue)
+        {
+            await MediaService.SetMediaStatusAsync(RejectMediaId.Value, EntryStatus.Rejected);
+            Nav.NavigateTo("/Admin/Approval", replace: true);
+            return;
+        }
+    }
+
+    private async Task Load()
+    {
+        _pendingVocab = await DictionaryService.GetPendingVocabularyAsync();
+        _pendingMedia = await MediaService.GetPendingMediaAsync();
+        StateHasChanged();
+    }
+
+    private static string GetApproveVocabUrl(int id) => $"/Admin/Approval?approveVocab={id}";
+    private static string GetRejectVocabUrl(int id) => $"/Admin/Approval?rejectVocab={id}";
+    private static string GetApproveMediaUrl(int id) => $"/Admin/Approval?approveMedia={id}";
+    private static string GetRejectMediaUrl(int id) => $"/Admin/Approval?rejectMedia={id}";
+}

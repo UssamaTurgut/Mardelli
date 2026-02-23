@@ -1,0 +1,25 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MardelliWeb.Components.Layout.MainLayout)">
+                <NotAuthorized>
+                    <p>@(IsGerman ? "Sie müssen sich anmelden." : "Giriş yapmalısınız.")</p>
+                    <a href="/Account/Login">@(IsGerman ? "Anmelden" : "Giriş")</a>
+                </NotAuthorized>
+            </AuthorizeRouteView>
+        </Found>
+        <NotFound>
+            <PageTitle>Not Found</PageTitle>
+            <LayoutView Layout="@typeof(MardelliWeb.Components.Layout.MainLayout)">
+                <p>Seite nicht gefunden.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
+
+@code {
+    private bool IsGerman => System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de";
+}

@@ -1,0 +1,59 @@
+@using System.Globalization
+@inject NavigationManager Nav
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid d-flex align-items-center gap-2">
+        <img src="/images/logo.png" alt="" class="sidebar-logo" onerror="this.style.display='none'" />
+        <a class="navbar-brand" href="/">Mardelli Sözlük / Mardelli Wörterbuch</a>
+    </div>
+</div>
+<input type="checkbox" title="@(IsGerman ? "Navigation" : "Menü")" class="navbar-toggler" />
+
+<div class="nav-scrollable">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <a class="nav-link @(IsStartPage ? "active" : "")" href="/">
+                <span class="bi bi-house-door"></span> @(IsGerman ? "Start" : "Ana Sayfa")
+            </a>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/dictionary">
+                <span class="bi bi-book"></span> @(IsGerman ? "Wörterbuch" : "Sözlük")
+            </NavLink>
+        </div>
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/add-entry">
+                        <span class="bi bi-plus-circle"></span> @(IsGerman ? "Vokabel eintragen" : "Kelime ekle")
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/media">
+                        <span class="bi bi-film"></span> @(IsGerman ? "Medien hochladen" : "Medya yükle")
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/materials">
+                <span class="bi bi-collection"></span> @(IsGerman ? "Materialien" : "Materyaller")
+            </NavLink>
+        </div>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/Admin/Approval">
+                        <span class="bi bi-check-circle"></span> @(IsGerman ? "Freigabe (Admin)" : "Onay (Admin)")
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    [Parameter] public string Culture { get; set; } = "de";
+    private bool IsGerman => (Culture ?? CultureInfo.CurrentUICulture.TwoLetterISOLanguageName) == "de";
+    private bool IsStartPage => new Uri(Nav.Uri).AbsolutePath.Trim('/') == "";
+}

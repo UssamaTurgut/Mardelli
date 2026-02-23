@@ -1,0 +1,38 @@
+@page "/"
+@using System.Globalization
+@attribute [AllowAnonymous]
+
+<PageTitle>@(IsGerman ? "Mardelli Wörterbuch" : "Mardelli Sözlük")</PageTitle>
+
+<div class="home-page">
+    <section class="hero-section">
+        <img src="/images/hero.jpg.png" alt="Mardin – Südosttürkei" class="hero-image" />
+        <div class="hero-overlay">
+            <h1 class="display-5">@(IsGerman ? "Mardelli-Arabisch Wörterbuch" : "Mardelli Arapça Sözlük")</h1>
+            <p class="lead">@(IsGerman ? "Region Mardin, Südosttürkei" : "Mardin bölgesi, Güneydoğu Türkiye")</p>
+            <div class="hero-cta">
+                <a href="/dictionary" class="btn btn-primary">@(IsGerman ? "Zum Wörterbuch" : "Sözlüğe git")</a>
+            </div>
+        </div>
+    </section>
+    <div class="p-4 content-section">
+        <p class="lead">
+            @(IsGerman
+                ? "Dokumentation des Mardelli-Dialekts aus der Region Mardin (Südosttürkei). Durchsuchen Sie das Wörterbuch oder tragen Sie als angemeldete Nutzer Vokabeln und Materialien bei."
+                : "Mardin bölgesinden (Güneydoğu Türkiye) Mardelli lehçesinin dokümantasyonu. Sözlüğe göz atın veya giriş yaparak kelime ve materyal ekleyin.")
+        </p>
+        <p>
+            <a href="/dictionary" class="btn btn-primary">@(IsGerman ? "Zum Wörterbuch" : "Sözlüğe git")</a>
+            <AuthorizeView>
+                <Authorized>
+                    <a href="/add-entry" class="btn btn-outline-primary ms-2">@(IsGerman ? "Vokabel eintragen" : "Kelime ekle")</a>
+                    <a href="/media" class="btn btn-outline-secondary ms-2">@(IsGerman ? "Medien hochladen" : "Medya yükle")</a>
+                </Authorized>
+            </AuthorizeView>
+        </p>
+    </div>
+</div>
+
+@code {
+    private bool IsGerman => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de";
+}

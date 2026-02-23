@@ -1,0 +1,72 @@
+@page "/materials"
+@using System.Globalization
+@using MardelliWeb.Core
+@inject MediaService MediaService
+@inject DictionaryService DictionaryService
+@attribute [AllowAnonymous]
+@rendermode InteractiveServer
+
+<PageTitle>@(IsGerman ? "Materialien" : "Materyaller")</PageTitle>
+
+<div class="p-4">
+    <h1>@(IsGerman ? "Materialien" : "Materyaller")</h1>
+    <p class="text-muted mb-4">@(IsGerman ? "Videos und Texte, in denen Mardelli vorkommt oder dokumentiert wird." : "Mardelli'nin geçtiği veya belgelendiği videolar ve metinler.")</p>
+
+    <div class="mb-4">
+        <label class="form-label">@(IsGerman ? "Region" : "Bölge")</label>
+        <select class="form-select w-auto" @bind="_regionId" @bind:after="Load">
+            <option value="0">@(IsGerman ? "Alle" : "Tümü")</option>
+            @foreach (var r in _regions)
+            {
+                <option value="@r.Id">@(IsGerman ? r.NameGerman : r.NameTurkish)</option>
+            }
+        </select>
+    </div>
+
+    @if (_items.Any())
+    {
+        <div class="list-group">
+            @foreach (var m in _items)
+            {
+                <div class="list-group-item d-flex justify-content-between align-items-center card-mardelli mb-2">
+                    <div>
+                        <strong>@m.Title</strong>
+                        <span class="badge bg-secondary ms-2">@(m.Type == Core.MediaType.Video ? (IsGerman ? "Video" : "Video") : (IsGerman ? "Text" : "Metin"))</span>
+                        @if (m.Region != null) { <span class="text-muted ms-2">@(IsGerman ? m.Region.NameGerman : m.Region.NameTurkish)</span> }
+                        @if (!string.IsNullOrEmpty(m.Description)) { <p class="mb-0 mt-1 small text-muted">@m.Description</p> }
+                    </div>
+                    @if (!string.IsNullOrEmpty(m.FilePath))
+                    {
+                        <a href="@m.FilePath" target="_blank" class="btn btn-sm btn-outline-primary">@(IsGerman ? "Öffnen" : "Aç")</a>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="materials-empty-state">
+            <img src="/images/materials-illustration.png.png" alt="" class="materials-empty-illustration" />
+            <h2 class="section-heading">@(IsGerman ? "Noch keine Materialien" : "Henüz materyal yok")</h2>
+            <p class="section-desc">@(IsGerman ? "Hier erscheinen freigegebene Videos und Texte, in denen Mardelli vorkommt oder dokumentiert wird. Angemeldete Nutzer können unter „Medien hochladen“ Material einreichen; nach Freigabe durch einen Admin wird es hier angezeigt." : "Burada Mardelli'nin geçtiği veya belgelendiği onaylanmış videolar ve metinler görünecek. Giriş yapan kullanıcılar \"Medya yükle\" bölümünden materyal ekleyebilir; bir admin onayladıktan sonra burada listelenir.")</p>
+        </div>
+    }
+</div>
+
+@code {
+    private List<MediaItem> _items = new();
+    private List<Region> _regions = new();
+    private int _regionId;
+    private bool IsGerman => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _regions = await DictionaryService.GetRegionsAsync();
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        _items = await MediaService.GetItemsAsync(_regionId > 0 ? _regionId : null);
+    }
+}

@@ -1,0 +1,74 @@
+@page "/Account/Login"
+@using System.Globalization
+@inject NavigationManager Nav
+@inject SignInManager<ApplicationUser> SignInManager
+@attribute [AllowAnonymous]
+@rendermode InteractiveServer
+
+<PageTitle>@(IsGerman ? "Anmelden" : "Giriş")</PageTitle>
+
+<div class="p-4">
+    <h1>@(IsGerman ? "Anmelden" : "Giriş")</h1>
+    <EditForm Model="@(Model ??= new LoginForm())" @ref="_editForm" class="max-w-400">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" />
+        <div class="mb-3">
+            <label class="form-label">@(IsGerman ? "E-Mail" : "E-posta")</label>
+            <InputText @bind-Value="Model!.Email" class="form-control" type="email" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">@(IsGerman ? "Passwort" : "Şifre")</label>
+            <InputText @bind-Value="Model!.Password" class="form-control" type="password" />
+        </div>
+        <div class="mb-3 form-check">
+            <InputCheckbox @bind-Value="Model!.RememberMe" class="form-check-input" id="remember" />
+            <label class="form-check-label" for="remember">@(IsGerman ? "Angemeldet bleiben" : "Beni hatırla")</label>
+        </div>
+        <button type="button" class="btn btn-primary" disabled="@_loading" @onclick="OnSubmitClick">@(IsGerman ? "Anmelden" : "Giriş")</button>
+        @if (!string.IsNullOrEmpty(_error)) { <span class="text-danger ms-2">@_error</span> }
+    </EditForm>
+    <p class="mt-3"><a href="/Account/Register">@(IsGerman ? "Noch kein Konto? Registrieren" : "Hesabınız yok mu? Kayıt olun")</a></p>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    public LoginForm? Model { get; set; }
+
+    private EditForm? _editForm;
+    private string? _error;
+    private bool _loading;
+    private bool IsGerman => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de";
+
+    private async Task OnSubmitClick()
+    {
+        if (_editForm?.EditContext?.Validate() != true) return;
+        await Submit();
+    }
+
+    private async Task Submit()
+    {
+        _error = null;
+        var m = Model ?? new LoginForm();
+        if (string.IsNullOrWhiteSpace(m.Email) || string.IsNullOrWhiteSpace(m.Password))
+        {
+            _error = IsGerman ? "E-Mail und Passwort eingeben." : "E-posta ve şifre girin.";
+            return;
+        }
+        _loading = true;
+        StateHasChanged();
+        var result = await SignInManager.PasswordSignInAsync(m.Email, m.Password, m.RememberMe, lockoutOnFailure: false);
+        _loading = false;
+        if (result.Succeeded)
+            Nav.NavigateTo("/", forceLoad: true);
+        else
+            _error = IsGerman ? "E-Mail oder Passwort falsch." : "E-posta veya şifre yanlış.";
+        StateHasChanged();
+    }
+
+    public class LoginForm
+    {
+        public string? Email { get; set; }
+        public string? Password { get; set; }
+        public bool RememberMe { get; set; }
+    }
+}

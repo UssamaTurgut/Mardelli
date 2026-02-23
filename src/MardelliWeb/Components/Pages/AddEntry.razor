@@ -1,0 +1,138 @@
+@page "/add-entry"
+@using System.Globalization
+@using MardelliWeb.Core
+@inject DictionaryService DictionaryService
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>@(IsGerman ? "Vokabel eintragen" : "Kelime ekle")</PageTitle>
+
+<div class="p-4">
+    <h1>@(IsGerman ? "Vokabel eintragen" : "Kelime ekle")</h1>
+    <p class="text-muted">@(IsGerman ? "Ihr Eintrag erscheint im Wörterbuch, sobald ein Admin ihn freigegeben hat." : "Girişiniz bir admin onayladıktan sonra sözlükte görünecektir.")</p>
+
+    <EditForm Model="@(Model ??= new EntryForm())" OnValidSubmit="Submit" FormName="AddEntryForm" class="max-w-600">
+        <AntiforgeryToken />
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" />
+
+        <div class="mb-3">
+            <label class="form-label">@(IsGerman ? "Quellsprache" : "Kaynak dil")</label>
+            <InputSelect @bind-Value="Model!.SourceLanguage" class="form-select">
+                <option value="@SourceLanguage.Turkish">@(IsGerman ? "Türkisch" : "Türkçe")</option>
+                <option value="@SourceLanguage.German">@(IsGerman ? "Deutsch" : "Almanca")</option>
+            </InputSelect>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">@(IsGerman ? "Wort in Quellsprache" : "Kaynak dilde kelime")</label>
+            <InputText @bind-Value="Model!.SourceWord" class="form-control" placeholder="@(IsGerman ? "z. B. Seker / Zucker" : "örn. Şeker / Zucker")" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">@(IsGerman ? "Mardelli (arabische Schrift)" : "Mardelli (Arapça yazı)")</label>
+            <InputText @bind-Value="Model!.MardelliWord" class="form-control" dir="rtl" placeholder="مثال" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">@(IsGerman ? "Mardelli (lateinische Schrift, optional)" : "Mardelli (Latin yazı, isteğe bağlı)")</label>
+            <InputText @bind-Value="Model!.MardelliLatin" class="form-control" placeholder="z. B. Sickar" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">@(IsGerman ? "Weitere Umschrift/Phonetik (optional)" : "Ek transkripsiyon (isteğe bağlı)")</label>
+            <InputText @bind-Value="Model!.Transliteration" class="form-control" placeholder="optional" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">@(IsGerman ? "Region (Herkunft)" : "Bölge (köken)")</label>
+            <InputSelect @bind-Value="Model!.RegionId" class="form-select">
+                @foreach (var r in _regions)
+                {
+                    <option value="@r.Id">@(IsGerman ? r.NameGerman : r.NameTurkish)</option>
+                }
+            </InputSelect>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">@(IsGerman ? "Anmerkungen (optional)" : "Notlar (isteğe bağlı)")</label>
+            <InputTextArea @bind-Value="Model!.Notes" class="form-control" rows="2" />
+        </div>
+        <button type="submit" class="btn btn-primary" disabled="@_saving">@(_saving ? (IsGerman ? "Wird gespeichert..." : "Kaydediliyor...") : (IsGerman ? "Speichern" : "Kaydet"))</button>
+        @if (_success)
+        {
+            <span class="text-success ms-2">@(IsGerman ? "Gespeichert." : "Kaydedildi.")</span>
+        }
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <span class="text-danger ms-2">@_error</span>
+        }
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    public EntryForm? Model { get; set; }
+
+    private List<Region> _regions = new();
+    private bool _saving;
+    private bool _success;
+    private string? _error;
+    private bool IsGerman => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _regions = await DictionaryService.GetRegionsAsync();
+        Model ??= new EntryForm();
+        if (_regions.Count > 0)
+            Model.RegionId = _regions[0].Id;
+    }
+
+    private async Task Submit()
+    {
+        _saving = true;
+        _success = false;
+        _error = null;
+        StateHasChanged();
+        var m = Model ?? new EntryForm();
+        try
+        {
+            var state = await AuthState.GetAuthenticationStateAsync();
+            var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                _error = IsGerman ? "Nicht angemeldet. Bitte erneut anmelden." : "Oturum açılmadı. Lütfen tekrar giriş yapın.";
+                return;
+            }
+            var entry = new VocabularyEntry
+            {
+                SourceLanguage = m.SourceLanguage,
+                SourceWord = m.SourceWord?.Trim() ?? "",
+                MardelliWord = m.MardelliWord?.Trim() ?? "",
+                MardelliLatin = string.IsNullOrWhiteSpace(m.MardelliLatin) ? null : m.MardelliLatin.Trim(),
+                Transliteration = string.IsNullOrWhiteSpace(m.Transliteration) ? null : m.Transliteration.Trim(),
+                Notes = string.IsNullOrWhiteSpace(m.Notes) ? null : m.Notes.Trim(),
+                RegionId = m.RegionId
+            };
+            await DictionaryService.AddAsync(entry, userId);
+            _success = true;
+            Model = new EntryForm { RegionId = m.RegionId };
+        }
+        catch (Exception ex)
+        {
+            _error = IsGerman ? "Fehler beim Speichern: " + ex.Message : "Kaydetme hatası: " + ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+            StateHasChanged();
+        }
+    }
+
+    public class EntryForm
+    {
+        public SourceLanguage SourceLanguage { get; set; }
+        public string SourceWord { get; set; } = "";
+        public string MardelliWord { get; set; } = "";
+        public string? MardelliLatin { get; set; }
+        public string? Transliteration { get; set; }
+        public string? Notes { get; set; }
+        public int RegionId { get; set; }
+    }
+}

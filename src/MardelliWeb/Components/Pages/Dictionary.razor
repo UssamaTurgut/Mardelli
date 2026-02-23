@@ -1,0 +1,118 @@
+@page "/dictionary"
+@using System.Globalization
+@using MardelliWeb.Core
+@inject DictionaryService DictionaryService
+@inject NavigationManager Nav
+@attribute [AllowAnonymous]
+@rendermode InteractiveServer
+
+<PageTitle>@(IsGerman ? "Wörterbuch" : "Sözlük")</PageTitle>
+
+<div class="p-4 dictionary-page">
+    <h1>@(IsGerman ? "Wörterbuch" : "Sözlük")</h1>
+
+    <div class="dictionary-search-card">
+        <div class="row g-4 align-items-end">
+            <div class="col-lg-8">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">@(IsGerman ? "Suche" : "Ara")</label>
+                        <input type="text" class="form-control" @bind="_search" @bind:event="oninput" placeholder="@(IsGerman ? "Wort eingeben..." : "Kelime girin...")" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@(IsGerman ? "Quellsprache" : "Kaynak dil")</label>
+                        <select class="form-select" @bind="_sourceLanguageStr">
+                            <option value="">@(IsGerman ? "Alle" : "Tümü")</option>
+                            <option value="0">@(IsGerman ? "Türkisch" : "Türkçe")</option>
+                            <option value="1">@(IsGerman ? "Deutsch" : "Almanca")</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">@(IsGerman ? "Region" : "Bölge")</label>
+                        <select class="form-select" @bind="_regionId">
+                            <option value="0">@(IsGerman ? "Alle" : "Tümü")</option>
+                            @foreach (var r in _regions)
+                            {
+                                <option value="@r.Id">@(IsGerman ? r.NameGerman : r.NameTurkish)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-primary w-100" @onclick="Load">@(IsGerman ? "Suchen" : "Ara")</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 dictionary-illustration-wrap">
+                <img src="/images/dictionary-illustration.png.png" alt="" />
+            </div>
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <p>@(IsGerman ? "Laden..." : "Yükleniyor...")</p>
+    }
+    else
+    {
+        <div class="table-responsive card-mardelli">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>@(IsGerman ? "Quellwort" : "Kaynak kelime")</th>
+                        <th>@(IsGerman ? "Quellsprache" : "Kaynak dil")</th>
+                        <th>@(IsGerman ? "Mardelli (arab.)" : "Mardelli (Arapça)")</th>
+                        <th>@(IsGerman ? "Mardelli (latein.)" : "Mardelli (Latin)")</th>
+                        <th>@(IsGerman ? "Region" : "Bölge")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in _entries)
+                    {
+                        <tr>
+                            <td>@e.SourceWord</td>
+                            <td>@(e.SourceLanguage == SourceLanguage.Turkish ? (IsGerman ? "Türkisch" : "Türkçe") : (IsGerman ? "Deutsch" : "Almanca"))</td>
+                            <td dir="rtl" style="font-size:1.2em">@e.MardelliWord</td>
+                            <td>@(e.MardelliLatin ?? e.Transliteration ?? "—")</td>
+                            <td>@(IsGerman ? e.Region.NameGerman : e.Region.NameTurkish)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (!_entries.Any())
+        {
+            <p class="text-muted">@(IsGerman ? "Keine Einträge gefunden." : "Kayıt bulunamadı.")</p>
+        }
+    }
+</div>
+
+@code {
+    private List<VocabularyEntry> _entries = new();
+    private List<Region> _regions = new();
+    private string _search = "";
+    private string _sourceLanguageStr = "";
+    private int _regionId;
+    private bool _loading = true;
+    private bool IsGerman => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _regions = await DictionaryService.GetRegionsAsync();
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        _loading = true;
+        StateHasChanged();
+        SourceLanguage? sl = null;
+        if (int.TryParse(_sourceLanguageStr, out var slVal) && (slVal == 0 || slVal == 1))
+            sl = (SourceLanguage)slVal;
+        _entries = await DictionaryService.GetEntriesAsync(
+            sl,
+            string.IsNullOrWhiteSpace(_search) ? null : _search,
+            _regionId > 0 ? _regionId : null);
+        _loading = false;
+        StateHasChanged();
+    }
+}
