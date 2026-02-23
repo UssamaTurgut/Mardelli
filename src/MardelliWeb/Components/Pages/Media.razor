@@ -4,7 +4,6 @@
 @inject MediaService MediaService
 @inject DictionaryService DictionaryService
 @inject AuthenticationStateProvider AuthState
-@inject IJSRuntime JS
 @attribute [Authorize]
 @rendermode InteractiveServer
 
@@ -15,43 +14,66 @@
     <p class="text-muted">@(IsGerman ? "Laden Sie Video- oder Textmaterial hoch, in dem Mardelli vorkommt oder dokumentiert wird." : "Mardelli'nin geçtiği veya belgelendiği video veya metin yükleyin.")</p>
     <p class="text-muted">@(IsGerman ? "Ihr Upload erscheint unter Materialien, sobald ein Admin ihn freigegeben hat." : "Yüklemeniz bir admin onayladıktan sonra materyaller bölümünde görünecektir.")</p>
 
-    <EditForm Model="@_model" @ref="_editForm" class="mb-4">
+    @if (!string.IsNullOrEmpty(SuccessMessage))
+    {
+        <p class="text-success">@SuccessMessage</p>
+    }
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <p class="text-danger">@ErrorMessage</p>
+    }
+
+    <form method="post" action="/api/media/upload" enctype="multipart/form-data" class="mb-4">
+        <AntiforgeryToken />
         <div class="row g-3">
             <div class="col-md-6">
-                <label class="form-label">@(IsGerman ? "Typ" : "Tür")</label>
-                <InputSelect @bind-Value="_model.Type" class="form-select">
-                    <option value="@Core.MediaType.Video">@(IsGerman ? "Video" : "Video")</option>
-                    <option value="@Core.MediaType.Text">@(IsGerman ? "Text" : "Metin")</option>
-                </InputSelect>
+                <label class="form-label" for="media-type">@(IsGerman ? "Typ" : "Tür")</label>
+                <select name="Type" id="media-type" class="form-select">
+                    <option value="Text">@(IsGerman ? "Text" : "Metin")</option>
+                    <option value="Video">@(IsGerman ? "Video" : "Video")</option>
+                </select>
             </div>
             <div class="col-md-6">
-                <label class="form-label">@(IsGerman ? "Titel" : "Başlık")</label>
-                <InputText @bind-Value="_model.Title" class="form-control" />
+                <label class="form-label" for="media-title">@(IsGerman ? "Titel" : "Başlık") *</label>
+                <input type="text" name="Title" id="media-title" class="form-control" required placeholder="@(IsGerman ? "Titel eingeben" : "Başlık girin")" />
             </div>
             <div class="col-12">
-                <label class="form-label">@(IsGerman ? "Beschreibung (optional)" : "Açıklama (isteğe bağlı)")</label>
-                <InputTextArea @bind-Value="_model.Description" class="form-control" rows="2" />
+                <label class="form-label" for="media-desc">@(IsGerman ? "Beschreibung (optional)" : "Açıklama (isteğe bağlı)")</label>
+                <textarea name="Description" id="media-desc" class="form-control" rows="2"></textarea>
             </div>
             <div class="col-md-6">
-                <label class="form-label">@(IsGerman ? "Datei" : "Dosya")</label>
-                <InputFile OnChange="OnFileSelected" class="form-control" accept="@(_model.Type == Core.MediaType.Video ? "video/*" : ".txt,.md")" />
+                <label class="form-label" for="media-file">@(IsGerman ? "Datei" : "Dosya")</label>
+                <input type="file" name="File" id="media-file" class="form-control" accept=".txt,.md,.pdf" />
+                <small class="text-muted">@(IsGerman ? "Text: .txt, .md, .pdf — Video: .mp4, .webm, .mov, …" : "Metin: .txt, .md, .pdf — Video: .mp4, .webm, .mov, …")</small>
             </div>
             <div class="col-md-6">
-                <label class="form-label">@(IsGerman ? "Region (optional)" : "Bölge (isteğe bağlı)")</label>
-                <InputSelect @bind-Value="_model.RegionId" class="form-select">
+                <label class="form-label" for="media-region">@(IsGerman ? "Region (optional)" : "Bölge (isteğe bağlı)")</label>
+                <select name="RegionId" id="media-region" class="form-select">
                     <option value="0">@(IsGerman ? "—" : "—")</option>
                     @foreach (var r in _regions)
                     {
                         <option value="@r.Id">@(IsGerman ? r.NameGerman : r.NameTurkish)</option>
                     }
-                </InputSelect>
+                </select>
             </div>
             <div class="col-12">
-                <button type="button" class="btn btn-primary" disabled="@_saving" @onclick="OnSubmitClick">@(IsGerman ? "Hochladen" : "Yükle")</button>
-                @if (_success) { <span class="text-success ms-2">@(IsGerman ? "Hochgeladen." : "Yüklendi.")</span> }
+                <button type="submit" class="btn btn-primary">@(IsGerman ? "Hochladen" : "Yükle")</button>
             </div>
         </div>
-    </EditForm>
+    </form>
+
+    <script>
+        (function() {
+            var typeSelect = document.getElementById('media-type');
+            var fileInput = document.getElementById('media-file');
+            if (!typeSelect || !fileInput) return;
+            function updateAccept() {
+                fileInput.value = '';
+                fileInput.accept = typeSelect.value === 'Video' ? 'video/*,.mp4,.webm,.mov,.avi,.mkv,.m4v' : '.txt,.md,.pdf';
+            }
+            typeSelect.addEventListener('change', updateAccept);
+        })();
+    </script>
 
     <h2 class="h5 mt-4">@(IsGerman ? "Ihre Einreichungen" : "Gönderileriniz")</h2>
     @if (_items.Any())
@@ -61,7 +83,7 @@
             {
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                     <span>
-                        @m.Title (@(m.Type == Core.MediaType.Video ? "Video" : "Text")) — @(m.Region != null ? (IsGerman ? m.Region.NameGerman : m.Region.NameTurkish) : "—")
+                        @m.Title (@(m.Type == MediaType.Video ? "Video" : "Text")) — @(m.Region != null ? (IsGerman ? m.Region.NameGerman : m.Region.NameTurkish) : "—")
                         @if (m.Status == EntryStatus.Pending)
                         { <span class="badge bg-warning text-dark ms-2">@(IsGerman ? "Ausstehend" : "Beklemede")</span> }
                         else if (m.Status == EntryStatus.Approved)
@@ -84,20 +106,17 @@
 </div>
 
 @code {
-    private EditForm? _editForm;
+    [SupplyParameterFromQuery(Name = "success")]
+    public string? SuccessQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? ErrorQuery { get; set; }
+
     private List<MediaItem> _items = new();
     private List<Region> _regions = new();
-    private MediaForm _model = new();
-    private IBrowserFile? _selectedFile;
-    private bool _saving;
-    private bool _success;
     private bool IsGerman => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de";
 
-    private async Task OnSubmitClick()
-    {
-        if (_editForm?.EditContext?.Validate() != true) return;
-        await Submit();
-    }
+    private string? SuccessMessage => SuccessQuery == "1" ? (IsGerman ? "Hochgeladen." : "Yüklendi.") : null;
+    private string? ErrorMessage => string.IsNullOrEmpty(ErrorQuery) ? null : ErrorQuery;
 
     protected override async Task OnInitializedAsync()
     {
@@ -105,55 +124,5 @@
         var state = await AuthState.GetAuthenticationStateAsync();
         var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         _items = await MediaService.GetItemsAsync(null, approvedOnly: false, createdByUserId: userId);
-    }
-
-    private void OnFileSelected(InputFileChangeEventArgs e) => _selectedFile = e.File;
-
-    private async Task Submit()
-    {
-        _saving = true;
-        _success = false;
-        StateHasChanged();
-        try
-        {
-            var state = await AuthState.GetAuthenticationStateAsync();
-            var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId)) return;
-            var item = new MediaItem
-            {
-                Type = _model.Type,
-                Title = _model.Title?.Trim() ?? "",
-                Description = string.IsNullOrWhiteSpace(_model.Description) ? null : _model.Description.Trim(),
-                RegionId = _model.RegionId > 0 ? _model.RegionId : null
-            };
-            Stream? stream = null;
-            string? fileName = null;
-            if (_selectedFile != null)
-            {
-                stream = _selectedFile.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024); // 100 MB
-                fileName = _selectedFile.Name;
-            }
-            await MediaService.AddAsync(item, userId, stream, fileName);
-            if (stream != null) await stream.DisposeAsync();
-            _success = true;
-            _model = new MediaForm();
-            _selectedFile = null;
-            var state2 = await AuthState.GetAuthenticationStateAsync();
-            var uid = state2.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            _items = await MediaService.GetItemsAsync(null, approvedOnly: false, createdByUserId: uid);
-        }
-        finally
-        {
-            _saving = false;
-            StateHasChanged();
-        }
-    }
-
-    private class MediaForm
-    {
-        public Core.MediaType Type { get; set; }
-        public string Title { get; set; } = "";
-        public string? Description { get; set; }
-        public int RegionId { get; set; }
     }
 }
