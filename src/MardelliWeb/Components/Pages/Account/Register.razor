@@ -1,85 +1,38 @@
 @page "/Account/Register"
 @using System.Globalization
-@inject NavigationManager Nav
-@inject UserManager<ApplicationUser> UserManager
-@inject SignInManager<ApplicationUser> SignInManager
+@using Microsoft.AspNetCore.Components.Web
 @attribute [AllowAnonymous]
-@rendermode InteractiveServer
 
 <PageTitle>@(IsGerman ? "Registrieren" : "Kayıt")</PageTitle>
 
 <div class="p-4">
     <h1>@(IsGerman ? "Registrieren" : "Kayıt")</h1>
-    <EditForm Model="@(Model ??= new RegisterForm())" @ref="_editForm" class="max-w-400">
-        <DataAnnotationsValidator />
-        <ValidationSummary class="text-danger" />
+    @if (!string.IsNullOrEmpty(ErrorQuery))
+    {
+        <p class="text-danger">@ErrorQuery</p>
+    }
+    <form method="post" action="/api/account/register" class="max-w-400">
+        <AntiforgeryToken />
         <div class="mb-3">
-            <label class="form-label">@(IsGerman ? "E-Mail" : "E-posta")</label>
-            <InputText @bind-Value="Model!.Email" class="form-control" type="email" />
+            <label class="form-label" for="reg-email">@(IsGerman ? "E-Mail" : "E-posta")</label>
+            <input id="reg-email" name="Email" type="email" class="form-control" required />
         </div>
         <div class="mb-3">
-            <label class="form-label">@(IsGerman ? "Passwort" : "Şifre")</label>
-            <InputText @bind-Value="Model!.Password" class="form-control" type="password" />
+            <label class="form-label" for="reg-password">@(IsGerman ? "Passwort" : "Şifre")</label>
+            <input id="reg-password" name="Password" type="password" class="form-control" required minlength="6" />
         </div>
         <div class="mb-3">
-            <label class="form-label">@(IsGerman ? "Passwort bestätigen" : "Şifre tekrar")</label>
-            <InputText @bind-Value="Model!.ConfirmPassword" class="form-control" type="password" />
+            <label class="form-label" for="reg-confirm">@(IsGerman ? "Passwort bestätigen" : "Şifre tekrar")</label>
+            <input id="reg-confirm" name="ConfirmPassword" type="password" class="form-control" required minlength="6" />
         </div>
-        <button type="button" class="btn btn-primary" disabled="@_loading" @onclick="OnSubmitClick">@(IsGerman ? "Registrieren" : "Kayıt ol")</button>
-        @if (!string.IsNullOrEmpty(_error)) { <span class="text-danger ms-2">@_error</span> }
-    </EditForm>
+        <button type="submit" class="btn btn-primary">@(IsGerman ? "Registrieren" : "Kayıt ol")</button>
+    </form>
     <p class="mt-3"><a href="/Account/Login">@(IsGerman ? "Bereits Konto? Anmelden" : "Zaten hesabınız var mı? Giriş")</a></p>
 </div>
 
 @code {
-    [SupplyParameterFromForm]
-    public RegisterForm? Model { get; set; }
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? ErrorQuery { get; set; }
 
-    private EditForm? _editForm;
-    private string? _error;
-    private bool _loading;
     private bool IsGerman => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de";
-
-    private async Task OnSubmitClick()
-    {
-        if (_editForm?.EditContext?.Validate() != true) return;
-        await Submit();
-    }
-
-    private async Task Submit()
-    {
-        _error = null;
-        var m = Model ?? new RegisterForm();
-        if (string.IsNullOrWhiteSpace(m.Password))
-        {
-            _error = IsGerman ? "Bitte Passwort eingeben." : "Lütfen şifre girin.";
-            return;
-        }
-        if (m.Password != m.ConfirmPassword)
-        {
-            _error = IsGerman ? "Passwörter stimmen nicht überein." : "Şifreler eşleşmiyor.";
-            return;
-        }
-        _loading = true;
-        StateHasChanged();
-        var user = new ApplicationUser { UserName = m.Email, Email = m.Email };
-        var result = await UserManager.CreateAsync(user, m.Password);
-        _loading = false;
-        if (result.Succeeded)
-        {
-            await SignInManager.SignInAsync(user, isPersistent: false);
-            Nav.NavigateTo("/", forceLoad: true);
-        }
-        else
-            _error = result.Errors.FirstOrDefault()?.Description ?? (IsGerman ? "Registrierung fehlgeschlagen." : "Kayıt başarısız.");
-        _loading = false;
-        StateHasChanged();
-    }
-
-    public class RegisterForm
-    {
-        public string? Email { get; set; }
-        public string? Password { get; set; }
-        public string? ConfirmPassword { get; set; }
-    }
 }

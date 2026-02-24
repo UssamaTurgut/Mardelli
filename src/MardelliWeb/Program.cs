@@ -11,6 +11,16 @@ using Microsoft.AspNetCore.Localization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Für Azure: Ordner "Data" anlegen, falls Connection String z. B. "Data Source=Data/mardelli.db" ist
+var conn = builder.Configuration.GetConnectionString("DefaultConnection");
+if (!string.IsNullOrEmpty(conn) && conn.Contains("Data Source=", StringComparison.OrdinalIgnoreCase))
+{
+    var path = conn.Replace("Data Source=", "").Trim();
+    var dir = Path.GetDirectoryName(path);
+    if (!string.IsNullOrEmpty(dir))
+        Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, dir));
+}
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddCascadingAuthenticationState();
@@ -132,6 +142,48 @@ app.MapPost("/api/media/upload", async (
     return Results.Redirect("/media?success=1");
 })
 .RequireAuthorization();
+
+app.MapPost("/api/account/login", async (
+    HttpContext ctx,
+    IFormCollection form,
+    SignInManager<ApplicationUser> signInManager) =>
+{
+    var email = form["Email"].ToString().Trim();
+    var password = form["Password"].ToString();
+    var rememberMe = form["RememberMe"].ToString().Equals("on", StringComparison.OrdinalIgnoreCase) || form["RememberMe"].ToString() == "true";
+    if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+        return Results.Redirect("/Account/Login?error=" + Uri.EscapeDataString("E-Mail und Passwort eingeben."));
+    var result = await signInManager.PasswordSignInAsync(email, password, rememberMe, lockoutOnFailure: false);
+    if (result.Succeeded)
+        return Results.Redirect("/");
+    return Results.Redirect("/Account/Login?error=" + Uri.EscapeDataString("E-Mail oder Passwort falsch."));
+}).AllowAnonymous();
+
+app.MapPost("/api/account/register", async (
+    HttpContext ctx,
+    IFormCollection form,
+    UserManager<ApplicationUser> userManager,
+    SignInManager<ApplicationUser> signInManager) =>
+{
+    var email = form["Email"].ToString().Trim();
+    var password = form["Password"].ToString();
+    var confirmPassword = form["ConfirmPassword"].ToString();
+    if (string.IsNullOrEmpty(email))
+        return Results.Redirect("/Account/Register?error=" + Uri.EscapeDataString("E-Mail eingeben."));
+    if (string.IsNullOrEmpty(password))
+        return Results.Redirect("/Account/Register?error=" + Uri.EscapeDataString("Bitte Passwort eingeben."));
+    if (password != confirmPassword)
+        return Results.Redirect("/Account/Register?error=" + Uri.EscapeDataString("Passwörter stimmen nicht überein."));
+    var user = new ApplicationUser { UserName = email, Email = email };
+    var result = await userManager.CreateAsync(user, password);
+    if (result.Succeeded)
+    {
+        await signInManager.SignInAsync(user, isPersistent: false);
+        return Results.Redirect("/");
+    }
+    var err = result.Errors.FirstOrDefault()?.Description ?? "Registrierung fehlgeschlagen.";
+    return Results.Redirect("/Account/Register?error=" + Uri.EscapeDataString(err));
+}).AllowAnonymous();
 
 app.MapGet("/api/admin/delete-vocab/{id:int}", async (int id, HttpContext ctx, DictionaryService dictionaryService) =>
 {
