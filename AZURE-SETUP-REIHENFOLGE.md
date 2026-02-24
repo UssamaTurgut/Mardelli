@@ -128,3 +128,16 @@ In derselben Datei die Zeile `branches: [main]` zu `branches: [master]` ändern.
 | 8      | Browser | Azure-URL öffnen und testen |
 
 Ab dann: Bei jedem **Push auf main** (oder master) wird automatisch nach Azure deployed.
+
+---
+
+## Nach der ersten Registrierung auf Azure: Admin wird erst nach Neustart
+
+Die Admin-Rolle wird **nur beim Start der App** an die E-Mails aus `AdminEmails` vergeben. Auf Azure war die Datenbank beim ersten Start noch leer – du hast dich danach registriert. Dein User existiert, hat aber beim Start noch keine Admin-Rolle bekommen.
+
+**Lösung:** Azure Web App einmal neu starten.
+
+1. **Azure Portal** → deine Web App → **Overview** → oben **Restart** → bestätigen.
+2. 1–2 Minuten warten, dann erneut einloggen – „Freigabe (Admin)“ sollte erscheinen.
+
+Falls nicht: Unter **Configuration** → **Application settings** setzen: Name `AdminEmails__0`, Value `ussama-turgut@outlook.com` → **Save** (startet die App neu).
