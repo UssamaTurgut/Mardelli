@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using MardelliWeb.Core;
 
 namespace MardelliWeb.Data;
@@ -25,22 +26,44 @@ public static class DbInitializer
     }
 
     /// <summary>
-    /// Erstellt die Rolle "Admin" und weist alle in AdminEmails (appsettings.json) genannten E-Mail-Adressen dieser Rolle zu.
-    /// Erste Admins: E-Mail in "AdminEmails" eintragen (z. B. ["deine@email.de"]), App starten, ggf. Nutzer muss sich einmal registriert haben.
+    /// Erstellt die Rolle "Admin" und weist alle in AdminEmails genannten E-Mail-Adressen dieser Rolle zu.
+    /// Liest aus: appsettings.json "AdminEmails": ["a@x.com"] ODER Azure/Env "AdminEmails" = "a@x.com,b@x.com" (kommagetrennt).
     /// </summary>
-    public static async Task EnsureAdminRoleAsync(RoleManager<IdentityRole> roleManager, UserManager<ApplicationUser> userManager, IConfiguration config)
+    public static async Task EnsureAdminRoleAsync(RoleManager<IdentityRole> roleManager, UserManager<ApplicationUser> userManager, IConfiguration config, ILogger? logger = null)
     {
         if (!await roleManager.RoleExistsAsync(AdminRoleName))
             await roleManager.CreateAsync(new IdentityRole(AdminRoleName));
 
         var emails = config.GetSection("AdminEmails").Get<string[]>();
-        if (emails == null) return;
+        if (emails == null || emails.Length == 0)
+        {
+            var single = config["AdminEmails"]?.Trim();
+            if (!string.IsNullOrEmpty(single))
+                emails = single.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
+        if (emails == null || emails.Length == 0)
+        {
+            logger?.LogWarning("EnsureAdminRole: Keine AdminEmails in Konfiguration gefunden (AdminEmails oder AdminEmails__0 in Azure setzen).");
+            return;
+        }
+
         foreach (var email in emails)
         {
             if (string.IsNullOrWhiteSpace(email)) continue;
-            var user = await userManager.FindByEmailAsync(email.Trim());
-            if (user != null && !await userManager.IsInRoleAsync(user, AdminRoleName))
-                await userManager.AddToRoleAsync(user, AdminRoleName);
+            var trimmed = email.Trim();
+            var user = await userManager.FindByEmailAsync(trimmed);
+            if (user == null)
+                user = await userManager.FindByNameAsync(trimmed);
+            if (user != null)
+            {
+                if (!await userManager.IsInRoleAsync(user, AdminRoleName))
+                {
+                    await userManager.AddToRoleAsync(user, AdminRoleName);
+                    logger?.LogInformation("EnsureAdminRole: {Email} wurde zur Admin-Rolle hinzugefügt.", trimmed);
+                }
+            }
+            else
+                logger?.LogWarning("EnsureAdminRole: Kein User mit E-Mail/Name \"{Email}\" gefunden (zuerst registrieren).", trimmed);
         }
     }
 }

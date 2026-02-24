@@ -140,4 +140,11 @@ Die Admin-Rolle wird **nur beim Start der App** an die E-Mails aus `AdminEmails`
 1. **Azure Portal** → deine Web App → **Overview** → oben **Restart** → bestätigen.
 2. 1–2 Minuten warten, dann erneut einloggen – „Freigabe (Admin)“ sollte erscheinen.
 
-Falls nicht: Unter **Configuration** → **Application settings** setzen: Name `AdminEmails__0`, Value `ussama-turgut@outlook.com` → **Save** (startet die App neu).
+**Wichtig für Admin auf Azure:** Die Admin-E-Mail muss in Azure stehen, nicht nur in appsettings.json.  
+Unter **Configuration** → **Application settings** → **+ New application setting**:
+
+- **Name:** `AdminEmails` (genau so)
+- **Value:** `ussama-turgut@outlook.com`
+
+→ **OK** → oben **Save**. App startet neu, danach erneut einloggen.  
+(Alternativ: `AdminEmails__0` = `ussama-turgut@outlook.com` – zwei Unterstriche.)

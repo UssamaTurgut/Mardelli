@@ -211,10 +211,11 @@ using (var scope = app.Services.CreateScope())
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var logger = scope.ServiceProvider.GetService<Microsoft.Extensions.Logging.ILogger<Program>>();
 
     db.Database.EnsureCreated();
     DbInitializer.SeedAsync(db).GetAwaiter().GetResult();
-    DbInitializer.EnsureAdminRoleAsync(roleManager, userManager, config).GetAwaiter().GetResult();
+    DbInitializer.EnsureAdminRoleAsync(roleManager, userManager, config, logger).GetAwaiter().GetResult();
 }
 
 app.Run();
